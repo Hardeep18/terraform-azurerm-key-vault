@@ -20,9 +20,9 @@ locals {
   azure_ad_user_principal_names    = distinct(flatten(local.access_policies[*].azure_ad_user_principal_names))
   azure_ad_service_principal_names = distinct(flatten(local.access_policies[*].azure_ad_service_principal_names))
 
-  group_object_ids = { for g in data.azuread_group.adgrp : lower(g.display_name) => g.id }
-  user_object_ids  = { for u in data.azuread_user.adusr : lower(u.user_principal_name) => u.id }
-  spn_object_ids   = { for s in data.azuread_service_principal.adspn : lower(s.display_name) => s.id }
+  group_object_ids = { for g in data.azuread_group.adgrp : upper(g.display_name) => g.id }
+  user_object_ids  = { for u in data.azuread_user.adusr : upper(u.user_principal_name) => u.id }
+  spn_object_ids   = { for s in data.azuread_service_principal.adspn : upper(s.display_name) => s.id }
 
   flattened_access_policies = concat(
     flatten([
@@ -39,7 +39,7 @@ locals {
     flatten([
       for p in local.access_policies : flatten([
         for n in p.azure_ad_group_names : {
-          object_id               = local.group_object_ids[lower(n)]
+          object_id               = local.group_object_ids[upper(n)]
           certificate_permissions = p.certificate_permissions
           key_permissions         = p.key_permissions
           secret_permissions      = p.secret_permissions
@@ -50,7 +50,7 @@ locals {
     flatten([
       for p in local.access_policies : flatten([
         for n in p.azure_ad_user_principal_names : {
-          object_id               = local.user_object_ids[lower(n)]
+          object_id               = local.user_object_ids[upper(n)]
           certificate_permissions = p.certificate_permissions
           key_permissions         = p.key_permissions
           secret_permissions      = p.secret_permissions
@@ -61,7 +61,7 @@ locals {
     flatten([
       for p in local.access_policies : flatten([
         for n in p.azure_ad_service_principal_names : {
-          object_id               = local.spn_object_ids[lower(n)]
+          object_id               = local.spn_object_ids[upper(n)]
           certificate_permissions = p.certificate_permissions
           key_permissions         = p.key_permissions
           secret_permissions      = p.secret_permissions
@@ -120,7 +120,7 @@ data "azurerm_resource_group" "rgrp" {
 
 resource "azurerm_resource_group" "rg" {
   count    = var.create_resource_group ? 1 : 0
-  name     = lower(var.resource_group_name)
+  name     = upper(var.resource_group_name)
   location = var.location
   tags     = merge({ "ResourceName" = format("%s", var.resource_group_name) }, var.tags, )
 }
@@ -131,7 +131,7 @@ data "azurerm_client_config" "current" {}
 # Keyvault Creation - Default is "true"
 #-------------------------------------------------
 resource "azurerm_key_vault" "main" {
-  name                            = lower("kv-${var.key_vault_name}")
+  name                            = upper("kv-${var.key_vault_name}")
   location                        = local.location
   resource_group_name             = local.resource_group_name
   tenant_id                       = data.azurerm_client_config.current.tenant_id
@@ -142,7 +142,7 @@ resource "azurerm_key_vault" "main" {
   soft_delete_retention_days      = var.soft_delete_retention_days
   enable_rbac_authorization       = var.enable_rbac_authorization
   purge_protection_enabled        = var.enable_purge_protection
-  tags                            = merge({ "ResourceName" = lower("kv-${var.key_vault_name}") }, var.tags, )
+  tags                            = merge({ "ResourceName" = upper("kv-${var.key_vault_name}") }, var.tags, )
 
   dynamic "network_acls" {
     for_each = var.network_acls != null ? [true] : []
@@ -202,7 +202,7 @@ resource "random_password" "passwd" {
   for_each    = { for k, v in var.secrets : k => v if v == "" }
   length      = var.random_password_length
   min_upper   = 4
-  min_lower   = 2
+  min_upper   = 2
   min_numeric = 4
   min_special = 4
 
@@ -309,7 +309,7 @@ resource "azurerm_private_dns_a_record" "arecord1" {
 #---------------------------------------------------
 resource "azurerm_monitor_diagnostic_setting" "diag" {
   count                      = var.log_analytics_workspace_id != null ? 1 : 0
-  name                       = lower(format("%s-diag", azurerm_key_vault.main.name))
+  name                       = upper(format("%s-diag", azurerm_key_vault.main.name))
   target_resource_id         = azurerm_key_vault.main.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
   storage_account_id         = var.storage_account_id != null ? var.storage_account_id : null
